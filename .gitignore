@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+functions/lib/
+
+# Firebase emulator artifacts
+*-debug.log
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+.firebase/
+firebase-export-*/
+
+# Environment / secrets
+.env
+.env.*
+*.local
+
+# Service account keys
+serviceAccountKey.json
+*-service-account.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+ROADMAP.md
+
+CASE.md

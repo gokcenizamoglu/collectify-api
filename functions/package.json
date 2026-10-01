@@ -1,0 +1,39 @@
+{
+  "name": "collectify-functions",
+  "version": "0.1.0",
+  "description": "Collectify REST API — Firebase Cloud Functions (v2) + Express 5",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "test": "firebase emulators:exec --only auth,firestore \"jest --runInBand\"",
+    "serve": "npm run build && firebase emulators:start"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.10.2",
+    "@types/supertest": "^6.0.2",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "firebase-tools": "^15.32.1",
+    "jest": "^30.5.2",
+    "prettier": "^3.4.2",
+    "supertest": "^7.0.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1"
+  }
+}
