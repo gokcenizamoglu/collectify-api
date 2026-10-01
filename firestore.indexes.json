@@ -1,4 +1,33 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "priority", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "items",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "priority", "order": "ASCENDING" },
+        { "fieldPath": "tags", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }

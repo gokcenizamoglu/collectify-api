@@ -35,7 +35,9 @@ function lockDocId(nameKey: string): string {
 // ---- Path builders: the ONLY place that knows Firestore layout. ----
 const userRef = (uid: string) => db.collection("users").doc(uid);
 const collectionsCol = (uid: string) => userRef(uid).collection("collections");
-const collectionRef = (uid: string, id: string) => collectionsCol(uid).doc(id);
+// Exported so the items repository can build the nested items path from it,
+// keeping the collection path defined in exactly one place.
+export const collectionRef = (uid: string, id: string) => collectionsCol(uid).doc(id);
 const lockRef = (uid: string, nameKey: string) =>
   userRef(uid).collection("collectionNames").doc(lockDocId(nameKey));
 

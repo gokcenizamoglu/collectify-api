@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/authenticate";
 import * as controller from "../controllers/collectionsController";
+import { itemsRouter } from "./items";
 
 // Mounted at /collections in app.ts, so paths here are relative. Auth applies to
 // the whole router (and only to it — /health, on its own router, stays public,
@@ -13,3 +14,6 @@ collectionsRouter.post("/", controller.createCollection);
 collectionsRouter.get("/", controller.listCollections);
 collectionsRouter.get("/:collectionId", controller.getCollection);
 collectionsRouter.put("/:collectionId", controller.updateCollection);
+
+// Nested items: /collections/:collectionId/items...
+collectionsRouter.use("/:collectionId/items", itemsRouter);

@@ -31,8 +31,8 @@ export async function getCollection(
   res: Response,
 ): Promise<void> {
   const { uid } = getAuthUser(req);
-  const dto = await service.getCollection(uid, req.params.collectionId);
-  res.status(200).json({ data: dto });
+  const data = await service.getCollectionWithItems(uid, req.params.collectionId);
+  res.status(200).json({ data });
 }
 
 export async function updateCollection(
