@@ -14,6 +14,7 @@ collectionsRouter.post("/", controller.createCollection);
 collectionsRouter.get("/", controller.listCollections);
 collectionsRouter.get("/:collectionId", controller.getCollection);
 collectionsRouter.put("/:collectionId", controller.updateCollection);
+collectionsRouter.delete("/:collectionId", controller.deleteCollection);
 
 // Nested items: /collections/:collectionId/items...
 collectionsRouter.use("/:collectionId/items", itemsRouter);

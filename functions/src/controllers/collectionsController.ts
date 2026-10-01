@@ -44,3 +44,12 @@ export async function updateCollection(
   const dto = await service.updateCollection(uid, req.params.collectionId, input);
   res.status(200).json({ data: dto });
 }
+
+export async function deleteCollection(
+  req: Request<{ collectionId: string }>,
+  res: Response,
+): Promise<void> {
+  const { uid } = getAuthUser(req);
+  await service.deleteCollection(uid, req.params.collectionId);
+  res.status(204).send();
+}

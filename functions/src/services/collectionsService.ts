@@ -1,4 +1,5 @@
 import { DocumentData } from "firebase-admin/firestore";
+import * as logger from "firebase-functions/logger";
 import { ConflictError, NotFoundError } from "../errors";
 import { DEFAULT_PAGE_LIMIT, MAX_COLLECTIONS_PER_USER } from "../config/constants";
 import * as repo from "../repositories/collectionsRepository";
@@ -126,6 +127,45 @@ export async function listCollections(
   const startAfter = query.cursor ? decodeCursor(query.cursor) : undefined;
   const docs = await repo.listCollectionsPage(uid, query.limit, startAfter);
   return buildPage(docs, query.limit, collectionToDTO);
+}
+
+export async function deleteCollection(uid: string, id: string): Promise<void> {
+  // Step 1 — atomic part. Delete the collection doc, its name lock, and
+  // decrement the counter in one transaction. Doing this FIRST matters: the
+  // moment the collection doc is gone the collection "disappears" for the user,
+  // and because item creation checks the collection inside its own transaction
+  // (Phase 4), no new item can slip in mid-delete.
+  await repo.runInTransaction(async (tx) => {
+    // Read the collection first (also the 404 case). We don't read the user doc:
+    // increment(-1) is atomic server-side, so the counter needs no prior read.
+    const snap = await repo.getCollectionTx(tx, uid, id);
+    if (!snap.exists) {
+      throw new NotFoundError("Collection not found", "COLLECTION_NOT_FOUND");
+    }
+    const data = snap.data() as CollectionDoc;
+
+    repo.deleteCollectionDoc(tx, uid, id);
+    repo.deleteLock(tx, uid, data.nameKey); // nameKey from the doc -> lock doc id
+    repo.incrementCollectionCount(tx, uid, -1);
+  });
+
+  // Step 2 — bulk part, AFTER the transaction. Items don't fit in a transaction
+  // (500-write cap), so recursiveDelete sweeps the subcollection separately.
+  //
+  // Why this order and not the reverse: if items were deleted first, a crash
+  // mid-delete would leave "collection exists but half its items are missing" —
+  // a visible inconsistency. This order means a crash leaves only unreachable
+  // orphan items under an already-deleted collection; the counter and lock are
+  // already correct, so the user sees nothing inconsistent.
+  try {
+    await repo.recursiveDeleteCollection(uid, id);
+  } catch (err) {
+    // The user-visible state is already consistent; just record the leftovers.
+    logger.error("recursiveDelete failed; orphan items may remain", {
+      path: repo.collectionPath(uid, id),
+      error: err,
+    });
+  }
 }
 
 // GET /collections/:id returns the collection with its first page of items

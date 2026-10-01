@@ -101,6 +101,23 @@ export function incrementCollectionCount(tx: Transaction, uid: string, by: numbe
   tx.set(userRef(uid), { collectionCount: FieldValue.increment(by) }, { merge: true });
 }
 
+export function deleteCollectionDoc(tx: Transaction, uid: string, id: string): void {
+  tx.delete(collectionRef(uid, id));
+}
+
+// Bulk-delete the items subcollection. Cannot run in a transaction (a tx caps at
+// 500 writes), so this is called separately, after the atomic part commits.
+// recursiveDelete removes the subcollection even when the parent doc is gone.
+export function recursiveDeleteCollection(uid: string, id: string): Promise<void> {
+  return db.recursiveDelete(collectionRef(uid, id));
+}
+
+// The Firestore path of a collection, for logging without leaking path-building
+// out of this layer.
+export function collectionPath(uid: string, id: string): string {
+  return collectionRef(uid, id).path;
+}
+
 // ---- Non-transactional reads ----
 export function readCollection(uid: string, id: string): Promise<DocumentSnapshot> {
   return collectionRef(uid, id).get();
