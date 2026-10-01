@@ -10,3 +10,18 @@ export const MAX_COLLECTIONS_PER_USER = 20;
 // List pagination.
 export const DEFAULT_PAGE_LIMIT = 20;
 export const MAX_PAGE_LIMIT = 100;
+
+// Rate limiting: per-user, per minute.
+export const RATE_LIMIT_WINDOW_MS = 60_000;
+
+// Read live (per request) so the limit is configurable via env per environment
+// (e.g. tests use a small value) without a test-only branch in the code.
+// Defaults to 100 requests / window.
+export function rateLimitMax(): number {
+  return Number(process.env.RATE_LIMIT_MAX) || 100;
+}
+
+// Hard ceiling on concurrent function instances: a cost/abuse cap so a runaway
+// loop or attack can't spin up unbounded instances (and also bounds how far the
+// per-instance in-memory rate limit can be multiplied across instances).
+export const MAX_INSTANCES = 10;

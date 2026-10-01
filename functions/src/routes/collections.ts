@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/authenticate";
+import { rateLimiter } from "../middleware/rateLimit";
 import * as controller from "../controllers/collectionsController";
 import { itemsRouter } from "./items";
 
@@ -8,7 +9,9 @@ import { itemsRouter } from "./items";
 // and unknown routes fall through to the 404 handler without hitting auth).
 export const collectionsRouter = Router();
 
+// Auth first (sets req.user), then the per-user rate limit (keyed by uid).
 collectionsRouter.use(authenticate);
+collectionsRouter.use(rateLimiter);
 
 collectionsRouter.post("/", controller.createCollection);
 collectionsRouter.get("/", controller.listCollections);
