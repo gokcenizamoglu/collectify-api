@@ -3,3 +3,10 @@ export const REGION = "us-central1";
 
 // Opaque service identifier returned verbatim by GET /health.
 export const SERVICE_ID = "ppc-collectify-svc-a1b2c3d4e5f6-us-central1-prod-v2.4.1-rev8a3f";
+
+// Business limits.
+export const MAX_COLLECTIONS_PER_USER = 20;
+
+// List pagination.
+export const DEFAULT_PAGE_LIMIT = 20;
+export const MAX_PAGE_LIMIT = 100;

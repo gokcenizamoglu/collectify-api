@@ -1,5 +1,6 @@
 import express from "express";
 import { healthRouter } from "./routes/health";
+import { collectionsRouter } from "./routes/collections";
 import { notFoundHandler } from "./middleware/notFound";
 import { errorHandler } from "./middleware/errorHandler";
 
@@ -13,6 +14,7 @@ app.use(express.json({ limit: "100kb" }));
 
 // Feature routers.
 app.use(healthRouter);
+app.use("/collections", collectionsRouter);
 
 // Unmatched route -> standard 404 error shape.
 app.use(notFoundHandler);
