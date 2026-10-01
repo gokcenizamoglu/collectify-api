@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "test": "firebase emulators:exec --only auth,firestore \"jest --runInBand\"",
+    "token": "node --experimental-strip-types scripts/get-token.ts",
     "serve": "npm run build && firebase emulators:start"
   },
   "dependencies": {
@@ -21,6 +22,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-modules-commonjs": "^7.29.7",
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
