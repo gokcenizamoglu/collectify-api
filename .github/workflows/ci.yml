@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node version comes from .nvmrc (repo root) so CI and local agree.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+
+      # firebase-tools 15 needs JDK 21+ to launch the emulators.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Cache the downloaded emulator jars so CI doesn't re-download them each run.
+      - name: Cache Firebase emulators
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('firebase.json') }}
+          restore-keys: |
+            ${{ runner.os }}-firebase-emulators-
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      # Same as `npm test`, but with --project demo-collectify. The "demo-" prefix
+      # tells Firebase this is a demo project: the emulators never contact a real
+      # Firebase project and need no credentials in CI. emulators:exec exports
+      # GCLOUD_PROJECT=demo-collectify to the jest process, which the tests read
+      # (they fall back to "collectify-case" only for local runs). The npm "test"
+      # script is left untouched so local `npm test` keeps working as-is.
+      - name: Test (emulators, demo project)
+        run: npx firebase emulators:exec --project demo-collectify --only auth,firestore "npx jest --runInBand"

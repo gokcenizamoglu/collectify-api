@@ -108,19 +108,8 @@ describe("POST /collections", () => {
     expect(over.body.error.code).toBe("COLLECTION_LIMIT_REACHED");
   });
 
-  it("two parallel POSTs with the same name -> exactly one 201, one 409", async () => {
-    const { token } = await signUp();
-
-    const [a, b] = await Promise.all([
-      request(app).post("/collections").set(auth(token)).send({ name: "Same" }),
-      request(app).post("/collections").set(auth(token)).send({ name: "Same" }),
-    ]);
-
-    const statuses = [a.status, b.status].sort();
-    expect(statuses).toEqual([201, 409]);
-    const conflict = a.status === 409 ? a : b;
-    expect(conflict.body.error.code).toBe("DUPLICATE_COLLECTION_NAME");
-  });
+  // The same-name parallel-create test lives in collectionsParallel.test.ts so a
+  // jest.retryTimes can be scoped to it alone (emulator transaction contention).
 });
 
 describe("ownership (404, never 403)", () => {
