@@ -4,6 +4,8 @@
 
 REST API for "Collectify", a fictional mobile app, built for the Papcorns Backend Engineer case study. It is a single Firebase Cloud Function (v2 `onRequest`, region `us-central1`) hosting one Express 5 app, backed by Firestore and Firebase Auth via the Admin SDK. There is no client in this repo — it is the API only.
 
+**Live:** `https://us-central1-collectify-case.cloudfunctions.net/api` — try it with `curl https://us-central1-collectify-case.cloudfunctions.net/api/health` (no auth). All other endpoints require a Firebase ID token.
+
 ## Quick start
 
 Requirements:
@@ -31,7 +33,7 @@ npm test
 
 Other scripts: `npm run build` (tsc), `npm run lint` (eslint), `npm run format` (prettier).
 
-The emulated function base URL is `http://127.0.0.1:5001/<projectId>/us-central1/api` (the examples below use `$BASE_URL`).
+The function base URL (`$BASE_URL` in the examples below) is the live URL above, or `http://127.0.0.1:5001/<projectId>/us-central1/api` against the emulators.
 
 ## API reference
 
