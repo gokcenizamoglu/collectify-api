@@ -39,7 +39,7 @@ describe("errorHandler — unexpected errors", () => {
     expect(JSON.stringify(res.body)).not.toContain("sensitive");
     expect(JSON.stringify(res.body)).not.toContain("stack");
 
-    // The real error is logged server-side for debugging.
-    expect(logError).toHaveBeenCalledWith("Unhandled error", secret);
+    // The real error is logged server-side for debugging (structured).
+    expect(logError).toHaveBeenCalledWith("Unhandled error", expect.objectContaining({ error: secret }));
   });
 });

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getAuthUser } from "../middleware/authenticate";
+import { extractIdempotency } from "../middleware/idempotency";
 import * as service from "../services/itemsService";
 import { createItemSchema, listItemsQuerySchema, updateItemSchema } from "../schemas/item";
 
@@ -10,8 +11,12 @@ type ItemParams = { collectionId: string; itemId: string };
 export async function createItem(req: Request<CollectionParams>, res: Response): Promise<void> {
   const { uid } = getAuthUser(req);
   const { collectionId } = req.params;
+  const idempotency = extractIdempotency(req, `POST /collections/${collectionId}/items`);
   const input = createItemSchema.parse(req.body);
-  const dto = await service.createItem(uid, collectionId, input);
+  const { dto, replayed } = await service.createItem(uid, collectionId, input, idempotency);
+  if (replayed) {
+    res.setHeader("Idempotent-Replayed", "true");
+  }
   res.status(201).location(`/collections/${collectionId}/items/${dto.id}`).json({ data: dto });
 }
 

@@ -1,9 +1,13 @@
 import { DocumentData } from "firebase-admin/firestore";
-import { NotFoundError } from "../errors";
+import { NotFoundError, UnprocessableEntityError } from "../errors";
 import * as collectionsRepo from "../repositories/collectionsRepository";
 import * as itemsRepo from "../repositories/itemsRepository";
 import { ItemDoc, ItemUpdateFields } from "../repositories/itemsRepository";
+import * as idempotencyRepo from "../repositories/idempotencyRepository";
+import { IdempotencyRecord } from "../repositories/idempotencyRepository";
+import { IdempotencyContext } from "../middleware/idempotency";
 import { ItemDTO, toItemDTO } from "../mappers/itemMapper";
+import { CreateResult } from "./collectionsService";
 import { buildPage, decodeCursor, Page } from "./pagination";
 import { CreateItemInput, ListItemsQuery, UpdateItemInput } from "../schemas/item";
 
@@ -16,17 +20,40 @@ export async function createItem(
   uid: string,
   collectionId: string,
   input: CreateItemInput,
-): Promise<ItemDTO> {
-  const id = itemsRepo.newItemId(uid, collectionId);
+  idempotency?: IdempotencyContext,
+): Promise<CreateResult<ItemDTO>> {
+  const newId = itemsRepo.newItemId(uid, collectionId);
 
-  await itemsRepo.runInTransaction(async (tx) => {
-    // Read the parent collection first: never write an orphan item into a
+  const { resourceId, replayed } = await itemsRepo.runInTransaction(async (tx) => {
+    // 0. Idempotency replay check first (before the collection-existence write path).
+    if (idempotency) {
+      const idemSnap = await idempotencyRepo.getIdempotencyTx(
+        tx,
+        uid,
+        idempotency.scope,
+        idempotency.key,
+      );
+      if (idemSnap.exists) {
+        const record = idemSnap.data() as IdempotencyRecord;
+        if (record.requestHash !== idempotency.requestHash) {
+          throw new UnprocessableEntityError(
+            "Idempotency-Key was already used with a different request body",
+            "IDEMPOTENCY_KEY_MISMATCH",
+          );
+        }
+        return { resourceId: record.resourceId, replayed: true };
+      }
+    }
+
+    // 1. Read the parent collection: never write an orphan item into a
     // collection that doesn't exist (or was deleted, or belongs to another user).
     const collSnap = await collectionsRepo.getCollectionTx(tx, uid, collectionId);
     if (!collSnap.exists) {
       throw new NotFoundError("Collection not found", "COLLECTION_NOT_FOUND");
     }
-    itemsRepo.createItem(tx, uid, collectionId, id, {
+
+    // 2. Writes: the item and (if present) the idempotency record, atomically.
+    itemsRepo.createItem(tx, uid, collectionId, newId, {
       title: input.title,
       content: input.content,
       url: input.url ?? null,
@@ -34,11 +61,22 @@ export async function createItem(
       tags: input.tags,
       priority: input.priority,
     });
+    if (idempotency) {
+      idempotencyRepo.setIdempotency(tx, uid, idempotency.scope, idempotency.key, {
+        requestHash: idempotency.requestHash,
+        resourceId: newId,
+      });
+    }
+    return { resourceId: newId, replayed: false };
   });
 
   // serverTimestamp() resolves only on commit, so read once for real timestamps.
-  const snap = await itemsRepo.readItem(uid, collectionId, id);
-  return toItemDTO(snap.id, snap.data() as ItemDoc);
+  const snap = await itemsRepo.readItem(uid, collectionId, resourceId);
+  // On replay the original item may have since been deleted -> 404.
+  if (!snap.exists) {
+    throw new NotFoundError("Item not found", "ITEM_NOT_FOUND");
+  }
+  return { dto: toItemDTO(snap.id, snap.data() as ItemDoc), replayed };
 }
 
 export async function listItems(

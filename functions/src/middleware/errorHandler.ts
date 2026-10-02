@@ -8,6 +8,7 @@ interface ErrorBody {
     code: string;
     message: string;
     details?: ErrorDetail[];
+    requestId?: string;
   };
 }
 
@@ -45,7 +46,7 @@ function isExposedClientError(err: unknown): err is ExposedClientError {
 
 // The ONLY place errors become HTTP responses. Registered last in app.ts.
 // The 4-argument signature is what marks it as an Express error handler.
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   // 1. Our own domain errors already know their status, code and (maybe) details.
   if (err instanceof AppError) {
     const body: ErrorBody = { error: { code: err.code, message: err.message } };
@@ -96,10 +97,14 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 5. Anything else is unexpected: log the full error server-side, but return a
-  // generic message so no stack trace or internal detail leaks to the client.
-  logger.error("Unhandled error", err);
-  res.status(500).json({
-    error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" },
-  });
+  // 5. Anything else is unexpected: log the full error server-side (with the
+  // request id for correlation), but return a generic message so no stack trace
+  // or internal detail leaks. The requestId is echoed in the body so the user
+  // can quote it to support; other error codes don't include it.
+  logger.error("Unhandled error", { requestId: req.requestId, error: err });
+  const body: ErrorBody = { error: { code: "INTERNAL_ERROR", message: "An unexpected error occurred" } };
+  if (req.requestId) {
+    body.error.requestId = req.requestId;
+  }
+  res.status(500).json(body);
 };

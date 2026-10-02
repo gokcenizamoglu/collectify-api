@@ -1,11 +1,14 @@
 import { DocumentData } from "firebase-admin/firestore";
 import * as logger from "firebase-functions/logger";
-import { ConflictError, NotFoundError } from "../errors";
+import { ConflictError, NotFoundError, UnprocessableEntityError } from "../errors";
 import { DEFAULT_PAGE_LIMIT, MAX_COLLECTIONS_PER_USER } from "../config/constants";
 import * as repo from "../repositories/collectionsRepository";
 import { CollectionDoc, toNameKey } from "../repositories/collectionsRepository";
 import * as itemsRepo from "../repositories/itemsRepository";
 import { ItemDoc } from "../repositories/itemsRepository";
+import * as idempotencyRepo from "../repositories/idempotencyRepository";
+import { IdempotencyRecord } from "../repositories/idempotencyRepository";
+import { IdempotencyContext } from "../middleware/idempotency";
 import { CollectionDTO, toCollectionDTO } from "../mappers/collectionMapper";
 import { ItemDTO, toItemDTO } from "../mappers/itemMapper";
 import { buildPage, decodeCursor, Page } from "./pagination";
@@ -16,6 +19,12 @@ import {
 } from "../schemas/collection";
 
 export type CollectionListPage = Page<CollectionDTO>;
+
+// A create returns the resource plus whether it was an idempotent replay.
+export interface CreateResult<T> {
+  dto: T;
+  replayed: boolean;
+}
 
 export interface CollectionWithItems extends CollectionDTO {
   items: ItemDTO[];
@@ -33,11 +42,34 @@ function itemToDTO(id: string, data: DocumentData): ItemDTO {
 export async function createCollection(
   uid: string,
   input: CreateCollectionInput,
-): Promise<CollectionDTO> {
+  idempotency?: IdempotencyContext,
+): Promise<CreateResult<CollectionDTO>> {
   const nameKey = toNameKey(input.name);
-  const id = repo.newCollectionId(uid);
+  const newId = repo.newCollectionId(uid);
 
-  await repo.runInTransaction(async (tx) => {
+  const { resourceId, replayed } = await repo.runInTransaction(async (tx) => {
+    // 0. Idempotency BEFORE duplicate/limit checks: a retry of the same request
+    // must replay its stored result, not collide with its own name lock (409).
+    if (idempotency) {
+      const idemSnap = await idempotencyRepo.getIdempotencyTx(
+        tx,
+        uid,
+        idempotency.scope,
+        idempotency.key,
+      );
+      if (idemSnap.exists) {
+        const record = idemSnap.data() as IdempotencyRecord;
+        if (record.requestHash !== idempotency.requestHash) {
+          // Same key, different body -> the client reused a key incorrectly.
+          throw new UnprocessableEntityError(
+            "Idempotency-Key was already used with a different request body",
+            "IDEMPOTENCY_KEY_MISMATCH",
+          );
+        }
+        return { resourceId: record.resourceId, replayed: true };
+      }
+    }
+
     // 1. All reads first — Firestore requires every read before any write.
     const [userSnap, lockSnap] = await Promise.all([
       repo.getUser(tx, uid),
@@ -58,17 +90,33 @@ export async function createCollection(
       throw new ConflictError("Collection limit reached", "COLLECTION_LIMIT_REACHED");
     }
 
-    // 4. Writes: the collection doc, the name lock, and the counter +1 — all in
-    // this one transaction so the limit and uniqueness can never be raced.
-    repo.createCollection(tx, uid, id, { name: input.name, nameKey, description: input.description });
-    repo.setLock(tx, uid, nameKey, id);
+    // 4. Writes: the collection doc, the name lock, the counter +1, and (if
+    // present) the idempotency record — all in this one transaction so the
+    // "resource created but not recorded" in-between state can never happen.
+    repo.createCollection(tx, uid, newId, {
+      name: input.name,
+      nameKey,
+      description: input.description,
+    });
+    repo.setLock(tx, uid, nameKey, newId);
     repo.incrementCollectionCount(tx, uid, 1);
+    if (idempotency) {
+      idempotencyRepo.setIdempotency(tx, uid, idempotency.scope, idempotency.key, {
+        requestHash: idempotency.requestHash,
+        resourceId: newId,
+      });
+    }
+    return { resourceId: newId, replayed: false };
   });
 
   // serverTimestamp() resolves only on commit and cannot be read back inside the
   // transaction, so we read the doc once more to return real ISO timestamps.
-  const snap = await repo.readCollection(uid, id);
-  return toCollectionDTO(snap.id, snap.data() as CollectionDoc);
+  const snap = await repo.readCollection(uid, resourceId);
+  // On replay the original resource may have since been deleted -> 404.
+  if (!snap.exists) {
+    throw new NotFoundError("Collection not found", "COLLECTION_NOT_FOUND");
+  }
+  return { dto: toCollectionDTO(snap.id, snap.data() as CollectionDoc), replayed };
 }
 
 export async function updateCollection(

@@ -25,3 +25,7 @@ export function rateLimitMax(): number {
 // loop or attack can't spin up unbounded instances (and also bounds how far the
 // per-instance in-memory rate limit can be multiplied across instances).
 export const MAX_INSTANCES = 10;
+
+// Idempotency key record lifetime. The TTL policy deletes expired records within
+// ~24h of this instant (not exactly at it) — long enough to absorb client retries.
+export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1000;

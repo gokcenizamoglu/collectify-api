@@ -30,6 +30,14 @@ export class ConflictError extends AppError {
   }
 }
 
+// 422 — syntactically valid but semantically unprocessable (e.g. an
+// Idempotency-Key reused with a different request body).
+export class UnprocessableEntityError extends AppError {
+  constructor(message: string, code: string) {
+    super(422, code, message);
+  }
+}
+
 // 429 — too many requests (rate limit exceeded).
 export class RateLimitError extends AppError {
   constructor(message = "Too many requests", code = "RATE_LIMITED") {

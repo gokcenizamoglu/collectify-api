@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { tagRoute } from "../middleware/routeTag";
 import * as controller from "../controllers/itemsController";
 
 // mergeParams exposes :collectionId from the parent collections router. Auth is
@@ -6,8 +7,12 @@ import * as controller from "../controllers/itemsController";
 // router, so no authenticate call is needed here.
 export const itemsRouter = Router({ mergeParams: true });
 
-itemsRouter.post("/", controller.createItem);
-itemsRouter.get("/", controller.listItems);
-itemsRouter.get("/:itemId", controller.getItem);
-itemsRouter.put("/:itemId", controller.updateItem);
-itemsRouter.delete("/:itemId", controller.deleteItem);
+// Full template prefix (the mount path keeps :collectionId as a param, not the
+// real id) so the access log stays low-cardinality.
+const BASE = "/collections/:collectionId/items";
+
+itemsRouter.post("/", tagRoute(BASE), controller.createItem);
+itemsRouter.get("/", tagRoute(BASE), controller.listItems);
+itemsRouter.get("/:itemId", tagRoute(BASE), controller.getItem);
+itemsRouter.put("/:itemId", tagRoute(BASE), controller.updateItem);
+itemsRouter.delete("/:itemId", tagRoute(BASE), controller.deleteItem);
