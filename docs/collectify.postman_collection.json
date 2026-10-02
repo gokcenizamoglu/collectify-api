@@ -1,0 +1,170 @@
+{
+  "info": {
+    "name": "Collectify API",
+    "description": "Collectify backend (Firebase Functions + Express 5). Set the `baseUrl` and `token` collection variables. All requests except Health inherit Bearer auth from the collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:5001/demo-collectify/us-central1/api" },
+    { "key": "token", "value": "" },
+    { "key": "collectionId", "value": "" },
+    { "key": "itemId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "Create collection (idempotent)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "{{$guid}}", "description": "Safe-retry key; reuse the same value to replay." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Recipes\",\n  \"description\": \"things to cook\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/collections", "host": ["{{baseUrl}}"], "path": ["collections"] }
+      }
+    },
+    {
+      "name": "List collections",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections?limit=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections"],
+          "query": [
+            { "key": "limit", "value": "20" },
+            { "key": "cursor", "value": "", "disabled": true }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get collection (with embedded items)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update collection",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"description\": \"updated\"\n}" },
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete collection",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}"]
+        }
+      }
+    },
+    {
+      "name": "Create item",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Idempotency-Key", "value": "{{$guid}}", "description": "Optional safe-retry key." }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Pancakes\",\n  \"content\": \"flour, eggs, milk\",\n  \"priority\": \"high\",\n  \"tags\": [\"breakfast\", \"quick\"],\n  \"url\": \"https://example.com/pancakes\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}", "items"]
+        }
+      }
+    },
+    {
+      "name": "List items (filtered)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items?limit=20&priority=high&tag=breakfast",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}", "items"],
+          "query": [
+            { "key": "limit", "value": "20" },
+            { "key": "priority", "value": "high" },
+            { "key": "tag", "value": "breakfast" },
+            { "key": "cursor", "value": "", "disabled": true }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get item",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}", "items", "{{itemId}}"]
+        }
+      }
+    },
+    {
+      "name": "Update item (clear imageUrl)",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"imageUrl\": null\n}" },
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}", "items", "{{itemId}}"]
+        }
+      }
+    },
+    {
+      "name": "Delete item",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items/{{itemId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["collections", "{{collectionId}}", "items", "{{itemId}}"]
+        }
+      }
+    }
+  ]
+}
